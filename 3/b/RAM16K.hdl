@@ -13,5 +13,15 @@ CHIP RAM16K {
     OUT out[16];
 
     PARTS:
-    //// Replace this comment with your code.
+	// 주소에 해당하는 RAM에만 load가 활성화
+	DMux4Way (in=load, sel=address[0..1], a=w1, b=w2, c=w3, d=w4);
+
+	// 모든 RAM들은 in을 입력 받는다.
+	RAM4K (in=in, load=w1, address=address[2..13], out=x1);
+	RAM4K (in=in, load=w2, address=address[2..13], out=x2);
+	RAM4K (in=in, load=w3, address=address[2..13], out=x3);
+	RAM4K (in=in, load=w4, address=address[2..13], out=x4);
+
+	// Mux를 이용해 address에 해당하는 out을 out으로 내보낸다.
+	Mux4Way16 (a=x1, b=x2, c=x3, d=x4, sel=address[0..1], out=out);
 }

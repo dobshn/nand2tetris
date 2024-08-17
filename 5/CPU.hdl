@@ -32,5 +32,54 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-	//// Replace this comment with your code.
+
+    	// op-code에 따라 A 레지스터에 입력되는 값 결정
+		Mux16 (a=instruction, b=ALUout, sel=instruction[15], out=Mux16out1);
+
+		// writeA = instruction[5] + instruction[15]'
+		Not (in=instruction[15], out=NotInstruction15);
+		Or (a=NotInstruction15, b=instruction[5], out=writeA);
+
+		// op-code = 0: load = 1
+		// op-code = 1: load = instruction[5]
+		// A 레지스터의 값은 addressM으로 바로 나간다
+		ARegister (in=Mux16out1, load=writeA, out=Aout, out[0..14]=addressM);
+
+		// instruction[12]에 따라 ALU 피연산자 결정
+		// instruction[12] = 0 -> A
+		// instruction[12] = 1 -> M
+		Mux16 (a=Aout, b=inM, sel=instruction[12], out=Mux16out2);
+
+		// D에 load하는 경우는 op-code가 1이고, instruction[4]가 1일 때만
+		And (a=instruction[15], b=instruction[4], out=writeD);
+		DRegister (in=ALUout, load=writeD, out=Dout);
+
+		// M에 load하는 경우는 op-code가 1이고, instruction[3]이 1일 때만
+		And(a=instruction[15], b=instruction[3], out=writeM);
+
+		// ALU의 피연산자는 D와 A|M
+		ALU (x=Dout, y=Mux16out2, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=outM, out=ALUout, zr=zrout, ng=ngout);
+
+		// 양수인 경우
+		Not (in=zrout, out=Notzrout);
+		Not (in=ngout, out=Notngout);
+		And (a=Notzrout, b=Notngout, out=positive);
+		And (a=positive, b=instruction[0], out=load1);
+
+		// 0인 경우
+		And (a=zrout, b=instruction[1], out=load2);
+
+		// 음수인 경우
+		And (a=ngout, b=instruction[2], out=load3);
+
+		// 세 경우중 하나만 해당해도 load
+		Or (a=load1, b=load2, out=load4);
+		Or (a=load3, b=load4, out=load5);
+		// 단, C-명령어이어야함
+		And (a=load5, b=instruction[15], out=jump);
+
+		// jump가 있다면 pc를 A 레지스터에 있는 값으로 변경
+		// reset이 들어오면 0으로 설정
+		// 평상시엔 ++
+		PC(in=Aout, load=jump, inc=true, reset=reset, out[0..14]=pc);
 }
