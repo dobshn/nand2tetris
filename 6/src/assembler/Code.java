@@ -1,3 +1,5 @@
+package src.assembler;
+
 public class Code {
 
     public String dest(String mnemonic) {
